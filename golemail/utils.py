@@ -2,6 +2,8 @@ import base64
 import datetime
 import email
 
+from faxta_utils import to_tuple
+
 
 def convert_email_date(date):
     date_tuple = email.utils.parsedate_tz(date)
@@ -22,3 +24,24 @@ def decode_filename_header(val):
         return decoded.decode('utf-8')
     else:
         return decoded
+
+
+@to_tuple
+def get_attachments(mime_msg):
+    if mime_msg.is_multipart:
+        for part in mime_msg.walk():
+            part_type = part.get_content_maintype()
+            if part_type == 'application' or part_type == 'image':
+                filename = decode_filename_header(part.get_filename())
+                data = part.get_payload()
+                yield filename, data
+
+
+def get_message_body(mime_msg):
+    if mime_msg.is_multipart:
+        for part in mime_msg.walk():
+            part_type = part.get_content_type()
+            if part_type == 'text/html':
+                return part.get_payload()
+    elif mime_msg.get_content_maintype() == 'text':
+        return mime_msg.get_payload()
